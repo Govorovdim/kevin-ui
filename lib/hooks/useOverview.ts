@@ -53,6 +53,30 @@ export function useYearMonthlyDebt(householdId: number | null, year: number) {
   };
 }
 
+/** Fetches all 12 month overviews in parallel and returns per-month portfolio_value. */
+export function useYearMonthlyPortfolio(
+  householdId: number | null,
+  year: number,
+) {
+  const results = useQueries({
+    queries: Array.from({ length: 12 }, (_, i) => ({
+      queryKey: ["overview", "month", householdId, year, i + 1],
+      queryFn: async () => {
+        const res = await api.get(
+          `/api/v1/households/${householdId}/year/${year}/month/${i + 1}`,
+        );
+        return res.data as MonthOverview;
+      },
+      enabled: householdId != null,
+    })),
+  });
+
+  return {
+    data: results.map((r) => r.data?.portfolio_value ?? 0),
+    isLoading: results.some((r) => r.isLoading),
+  };
+}
+
 /** Fetches year overviews for all households and sums them up. */
 export function useAllHouseholdsYearOverview(
   householdIds: number[],
