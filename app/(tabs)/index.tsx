@@ -14,6 +14,7 @@ import { useHouseholds } from "../../lib/hooks/useHouseholds";
 import {
   useYearOverview,
   useYearMonthlyDebt,
+  useYearMonthlyPortfolio,
 } from "../../lib/hooks/useOverview";
 import { useHouseholdStore } from "../../store/household.store";
 import LineChart from "../../components/LineChart";
@@ -77,6 +78,10 @@ export default function DashboardScreen() {
     activeHousehold?.id ?? null,
     year,
   );
+  const { data: monthlyPortfolio } = useYearMonthlyPortfolio(
+    activeHousehold?.id ?? null,
+    year,
+  );
 
   // If no active household after households have loaded, go back to home
   useEffect(() => {
@@ -97,7 +102,7 @@ export default function DashboardScreen() {
   // ── Derived chart data ─────────────────────────────────────────────────────
   const incomeData = toMonthlyArray(overview.months, "total_income");
   const expensesData = toMonthlyArray(overview.months, "total_expenses");
-  const savingsData = toMonthlyArray(overview.months, "net_savings");
+  const portfolioData = monthlyPortfolio ?? new Array(12).fill(0);
   const debtData = monthlyDebt ?? new Array(12).fill(0);
 
   // ── Happy path ────────────────────────────────────────────────────────────
@@ -278,14 +283,14 @@ export default function DashboardScreen() {
             />
           </View>
 
-          {/* ── 5. Net Savings & Liabilities section ─────────────────── */}
+          {/* ── 5. Portfolio & Liabilities section ──────────────────── */}
           <Text className="text-base font-semibold text-gray-700 dark:text-gray-300 mb-2">
-            Net Savings &amp; Liabilities
+            Portfolio &amp; Liabilities
           </Text>
           <View className="bg-white dark:bg-gray-800 rounded-2xl p-4 mb-5 shadow-sm">
             <LineChart
               datasets={[
-                { data: savingsData, color: "#2563eb", label: "Savings" },
+                { data: portfolioData, color: "#2563eb", label: "Portfolio" },
                 { data: debtData, color: "#ef4444", label: "Liabilities" },
               ]}
               height={140}
@@ -309,6 +314,8 @@ export default function DashboardScreen() {
                 (monthData.total_income === 0 &&
                   monthData.total_expenses === 0 &&
                   monthData.net_savings === 0);
+
+              const monthPortfolio = monthlyPortfolio?.[index] ?? 0;
 
               return (
                 <TouchableOpacity
@@ -373,20 +380,18 @@ export default function DashboardScreen() {
                       )}
                     </Text>
 
-                    {/* Savings */}
+                    {/* Portfolio */}
                     <Text
                       className={
                         isEmpty
                           ? "text-gray-300 dark:text-gray-600 text-xs"
-                          : (monthData?.net_savings ?? 0) >= 0
-                            ? "text-primary-600 text-xs"
-                            : "text-danger-600 text-xs"
+                          : "text-primary-600 text-xs"
                       }
                       style={{ width: 68, textAlign: "right" }}
                       numberOfLines={1}
                     >
                       {formatCurrency(
-                        monthData?.net_savings ?? 0,
+                        monthPortfolio,
                         activeHousehold?.currency ?? "USD",
                         { decimals: false },
                       )}

@@ -2,6 +2,13 @@
 
 React Native (Expo) frontend for [Kevin](https://github.com/Govorovdim/kevin) — a household financial planner.
 
+## Demo
+
+A deployed demo is available at **<https://govorovdim.github.io/kevin-ui/>**
+
+- **User:** `demo`
+- **Password:** `password`
+
 ## Setup
 
 ```bash
