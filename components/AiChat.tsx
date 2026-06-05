@@ -44,6 +44,7 @@ export default function AiChat({
     (ChatMessage & { actions?: ActionResult[] })[]
   >([]);
   const scrollRef = useRef<ScrollView>(null);
+  const inputRef = useRef<TextInput>(null);
   const chatMutation = useChatMutation();
 
   function handleSend() {
@@ -55,6 +56,9 @@ export default function AiChat({
     const updatedMessages = [...messages, userMsg];
     setMessages(updatedMessages);
     setInput("");
+
+    // Re-focus the input so the user can immediately type the next message
+    setTimeout(() => inputRef.current?.focus(), 0);
 
     chatMutation.mutate(
       { message: text, history, year, month, householdName, households },
@@ -206,6 +210,7 @@ export default function AiChat({
           style={{ gap: 8 }}
         >
           <TextInput
+            ref={inputRef}
             className="flex-1 bg-gray-50 dark:bg-gray-700 rounded-xl px-3 py-2 text-sm text-gray-900 dark:text-white"
             placeholder="Type a message..."
             placeholderTextColor="#9ca3af"
@@ -214,6 +219,7 @@ export default function AiChat({
             onSubmitEditing={handleSend}
             returnKeyType="send"
             editable={!chatMutation.isPending}
+            blurOnSubmit={false}
           />
           <TouchableOpacity
             onPress={handleSend}
