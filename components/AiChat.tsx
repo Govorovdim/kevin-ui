@@ -8,11 +8,15 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
-  useColorScheme,
 } from "react-native";
+import { useColorScheme } from "nativewind";
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
-import { useChatMutation, ChatMessage, ActionResult } from "../lib/hooks/useChat";
+import {
+  useChatMutation,
+  ChatMessage,
+  ActionResult,
+} from "../lib/hooks/useChat";
 
 interface Household {
   id: number;
@@ -26,12 +30,19 @@ interface AiChatProps {
   households?: Household[];
 }
 
-export default function AiChat({ year, month, householdName, households }: AiChatProps) {
-  const colorScheme = useColorScheme();
+export default function AiChat({
+  year,
+  month,
+  householdName,
+  households,
+}: AiChatProps) {
+  const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<(ChatMessage & { actions?: ActionResult[] })[]>([]);
+  const [messages, setMessages] = useState<
+    (ChatMessage & { actions?: ActionResult[] })[]
+  >([]);
   const scrollRef = useRef<ScrollView>(null);
   const chatMutation = useChatMutation();
 
@@ -55,7 +66,10 @@ export default function AiChat({ year, month, householdName, households }: AiCha
             actions: data.actions,
           };
           setMessages((prev) => [...prev, assistantMsg]);
-          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+          setTimeout(
+            () => scrollRef.current?.scrollToEnd({ animated: true }),
+            100,
+          );
         },
         onError: () => {
           const errorMsg: ChatMessage = {
@@ -79,7 +93,9 @@ export default function AiChat({ year, month, householdName, households }: AiCha
         style={{ gap: 8 }}
       >
         <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
-        <Text className="text-white font-semibold text-sm flex-1">Ask Kevin AI...</Text>
+        <Text className="text-white font-semibold text-sm flex-1">
+          Ask Kevin AI...
+        </Text>
         <Ionicons name="chevron-down" size={18} color="#fff" />
       </TouchableOpacity>
     );
@@ -95,12 +111,19 @@ export default function AiChat({ year, month, householdName, households }: AiCha
         style={{ gap: 8 }}
       >
         <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
-        <Text className="text-white font-semibold text-sm flex-1">Kevin AI Assistant</Text>
+        <Text className="text-white font-semibold text-sm flex-1">
+          Kevin AI Assistant
+        </Text>
         <Ionicons name="chevron-up" size={18} color="#fff" />
       </TouchableOpacity>
 
       {/* Messages */}
-      <ScrollView ref={scrollRef} className="px-3 py-2" style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        ref={scrollRef}
+        className="px-3 py-2"
+        style={{ maxHeight: 280 }}
+        showsVerticalScrollIndicator={false}
+      >
         {messages.length === 0 && (
           <Text className="text-gray-400 dark:text-gray-500 text-xs text-center py-4">
             Ask me to add expenses, income, assets, or liabilities.{"\n"}
@@ -109,10 +132,15 @@ export default function AiChat({ year, month, householdName, households }: AiCha
         )}
 
         {messages.map((msg, i) => (
-          <View key={i} className={`mb-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
+          <View
+            key={i}
+            className={`mb-2 ${msg.role === "user" ? "items-end" : "items-start"}`}
+          >
             <View
               className={`rounded-xl px-3 py-2 max-w-[85%] ${
-                msg.role === "user" ? "bg-primary-600" : "bg-gray-100 dark:bg-gray-700"
+                msg.role === "user"
+                  ? "bg-primary-600"
+                  : "bg-gray-100 dark:bg-gray-700"
               }`}
             >
               {msg.role === "user" ? (
@@ -120,8 +148,15 @@ export default function AiChat({ year, month, householdName, households }: AiCha
               ) : (
                 <Markdown
                   style={{
-                    body: { fontSize: 13, color: isDark ? "#fff" : "#111827", lineHeight: 20 },
-                    strong: { fontWeight: "700", color: isDark ? "#fff" : "#111827" },
+                    body: {
+                      fontSize: 13,
+                      color: isDark ? "#fff" : "#111827",
+                      lineHeight: 20,
+                    },
+                    strong: {
+                      fontWeight: "700",
+                      color: isDark ? "#fff" : "#111827",
+                    },
                     bullet_list: { marginVertical: 4 },
                     ordered_list: { marginVertical: 4 },
                     list_item: { marginVertical: 2 },
@@ -163,7 +198,9 @@ export default function AiChat({ year, month, householdName, households }: AiCha
       </ScrollView>
 
       {/* Input */}
-      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : undefined}
+      >
         <View
           className="flex-row items-center px-3 py-2 border-t border-gray-100 dark:border-gray-700"
           style={{ gap: 8 }}
@@ -183,7 +220,11 @@ export default function AiChat({ year, month, householdName, households }: AiCha
             disabled={!input.trim() || chatMutation.isPending}
             className="w-8 h-8 items-center justify-center"
           >
-            <Ionicons name="send" size={20} color={input.trim() ? "#2563eb" : "#9ca3af"} />
+            <Ionicons
+              name="send"
+              size={20}
+              color={input.trim() ? "#2563eb" : "#9ca3af"}
+            />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
