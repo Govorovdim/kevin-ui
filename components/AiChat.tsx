@@ -26,6 +26,7 @@ interface Household {
 interface AiChatProps {
   year?: number;
   month?: number;
+  householdId?: number;
   householdName?: string;
   households?: Household[];
 }
@@ -33,6 +34,7 @@ interface AiChatProps {
 export default function AiChat({
   year,
   month,
+  householdId,
   householdName,
   households,
 }: AiChatProps) {
@@ -57,11 +59,18 @@ export default function AiChat({
     setMessages(updatedMessages);
     setInput("");
 
-    // Re-focus the input so the user can immediately type the next message
     setTimeout(() => inputRef.current?.focus(), 0);
 
     chatMutation.mutate(
-      { message: text, history, year, month, householdName, households },
+      {
+        message: text,
+        history,
+        year,
+        month,
+        householdId,
+        householdName,
+        households,
+      },
       {
         onSuccess: (data) => {
           const assistantMsg: ChatMessage & { actions?: ActionResult[] } = {
