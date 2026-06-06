@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useMemo } from "react";
 import {
   View,
   Text,
@@ -8,15 +8,14 @@ import {
   ActivityIndicator,
   KeyboardAvoidingView,
   Platform,
+  Modal,
+  FlatList,
 } from "react-native";
 import { useColorScheme } from "nativewind";
 import { Ionicons } from "@expo/vector-icons";
 import Markdown from "react-native-markdown-display";
-import {
-  useChatMutation,
-  ChatMessage,
-  ActionResult,
-} from "../lib/hooks/useChat";
+import { useChatMutation, ChatMessage } from "../lib/hooks/useChat";
+import { useChatStore, ChatSession } from "../store/chat.store";
 
 interface Household {
   id: number;
@@ -42,21 +41,42 @@ export default function AiChat({
   const isDark = colorScheme === "dark";
   const [expanded, setExpanded] = useState(false);
   const [input, setInput] = useState("");
-  const [messages, setMessages] = useState<
-    (ChatMessage & { actions?: ActionResult[] })[]
-  >([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const inputRef = useRef<TextInput>(null);
   const chatMutation = useChatMutation();
+
+  // Chat store
+  const {
+    sessions,
+    activeSessionId,
+    createSession,
+    setActiveSession,
+    addMessage,
+    deleteSession,
+  } = useChatStore();
+
+  // Get active session's messages
+  const activeSession = useMemo(
+    () => sessions.find((s) => s.id === activeSessionId) ?? null,
+    [sessions, activeSessionId],
+  );
+  const messages: ChatMessage[] = activeSession?.messages ?? [];
+
+  function ensureSession(): string {
+    if (activeSessionId) return activeSessionId;
+    return createSession(householdId);
+  }
 
   function handleSend() {
     const text = input.trim();
     if (!text || chatMutation.isPending) return;
 
+    const sessionId = ensureSession();
     const userMsg: ChatMessage = { role: "user", content: text };
+    addMessage(sessionId, userMsg);
+
     const history = messages.map((m) => ({ role: m.role, content: m.content }));
-    const updatedMessages = [...messages, userMsg];
-    setMessages(updatedMessages);
     setInput("");
 
     setTimeout(() => inputRef.current?.focus(), 0);
@@ -73,12 +93,11 @@ export default function AiChat({
       },
       {
         onSuccess: (data) => {
-          const assistantMsg: ChatMessage & { actions?: ActionResult[] } = {
+          const assistantMsg: ChatMessage = {
             role: "assistant",
             content: data.message,
-            actions: data.actions,
           };
-          setMessages((prev) => [...prev, assistantMsg]);
+          addMessage(sessionId, assistantMsg);
           setTimeout(
             () => scrollRef.current?.scrollToEnd({ animated: true }),
             100,
@@ -89,12 +108,39 @@ export default function AiChat({
             role: "assistant",
             content: "Sorry, something went wrong. Please try again.",
           };
-          setMessages((prev) => [...prev, errorMsg]);
+          addMessage(sessionId, errorMsg);
         },
       },
     );
 
     setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
+  }
+
+  function handleNewChat() {
+    createSession(householdId);
+    setInput("");
+  }
+
+  function handleSelectSession(session: ChatSession) {
+    setActiveSession(session.id);
+    setHistoryOpen(false);
+  }
+
+  function handleDeleteSession(sessionId: string) {
+    deleteSession(sessionId);
+    if (sessions.length <= 1) {
+      setHistoryOpen(false);
+    }
+  }
+
+  function formatDate(timestamp: number): string {
+    const d = new Date(timestamp);
+    return d.toLocaleDateString(undefined, {
+      month: "short",
+      day: "numeric",
+      hour: "2-digit",
+      minute: "2-digit",
+    });
   }
 
   // Collapsed state — just a button bar
@@ -118,17 +164,45 @@ export default function AiChat({
   return (
     <View className="bg-white dark:bg-gray-800 rounded-2xl mb-4 shadow-sm overflow-hidden border border-primary-200 dark:border-primary-800">
       {/* Header */}
-      <TouchableOpacity
-        onPress={() => setExpanded(false)}
+      <View
         className="bg-primary-600 px-4 py-3 flex-row items-center"
         style={{ gap: 8 }}
       >
-        <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
-        <Text className="text-white font-semibold text-sm flex-1">
-          Kevin AI Assistant
-        </Text>
-        <Ionicons name="chevron-up" size={18} color="#fff" />
-      </TouchableOpacity>
+        <TouchableOpacity
+          onPress={() => setExpanded(false)}
+          className="flex-row items-center flex-1"
+          style={{ gap: 8 }}
+        >
+          <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
+          <Text className="text-white font-semibold text-sm flex-1">
+            Kevin AI Assistant
+          </Text>
+        </TouchableOpacity>
+
+        {/* History dropdown button */}
+        {sessions.length > 0 && (
+          <TouchableOpacity
+            onPress={() => setHistoryOpen(true)}
+            className="w-7 h-7 items-center justify-center rounded-full"
+            style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+          >
+            <Ionicons name="time-outline" size={16} color="#fff" />
+          </TouchableOpacity>
+        )}
+
+        {/* New chat button */}
+        <TouchableOpacity
+          onPress={handleNewChat}
+          className="w-7 h-7 items-center justify-center rounded-full"
+          style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+        >
+          <Ionicons name="add" size={16} color="#fff" />
+        </TouchableOpacity>
+
+        <TouchableOpacity onPress={() => setExpanded(false)}>
+          <Ionicons name="chevron-up" size={18} color="#fff" />
+        </TouchableOpacity>
+      </View>
 
       {/* Messages */}
       <ScrollView
@@ -243,6 +317,87 @@ export default function AiChat({
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* History Modal */}
+      <Modal
+        visible={historyOpen}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setHistoryOpen(false)}
+      >
+        <TouchableOpacity
+          activeOpacity={1}
+          onPress={() => setHistoryOpen(false)}
+          className="flex-1 justify-center items-center"
+          style={{ backgroundColor: "rgba(0,0,0,0.5)" }}
+        >
+          <TouchableOpacity
+            activeOpacity={1}
+            onPress={() => {}}
+            className="w-[85%] max-h-[60%] bg-white dark:bg-gray-800 rounded-2xl overflow-hidden shadow-lg"
+          >
+            {/* Modal Header */}
+            <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
+              <Text className="text-base font-semibold text-gray-900 dark:text-white">
+                Chat History
+              </Text>
+              <TouchableOpacity onPress={() => setHistoryOpen(false)}>
+                <Ionicons
+                  name="close"
+                  size={22}
+                  color={isDark ? "#fff" : "#374151"}
+                />
+              </TouchableOpacity>
+            </View>
+
+            {/* Session List */}
+            <FlatList
+              data={sessions}
+              keyExtractor={(item) => item.id}
+              contentContainerStyle={{ paddingVertical: 4 }}
+              ListEmptyComponent={
+                <Text className="text-gray-400 text-sm text-center py-8">
+                  No conversations yet
+                </Text>
+              }
+              renderItem={({ item }) => (
+                <TouchableOpacity
+                  onPress={() => handleSelectSession(item)}
+                  className={`flex-row items-center px-4 py-3 ${
+                    item.id === activeSessionId
+                      ? "bg-primary-50 dark:bg-primary-900/20"
+                      : ""
+                  }`}
+                >
+                  <View className="flex-1" style={{ gap: 2 }}>
+                    <Text
+                      className="text-sm font-medium text-gray-900 dark:text-white"
+                      numberOfLines={1}
+                    >
+                      {item.title}
+                    </Text>
+                    <Text className="text-xs text-gray-400 dark:text-gray-500">
+                      {item.messages.length} messages ·{" "}
+                      {formatDate(item.updatedAt)}
+                    </Text>
+                  </View>
+
+                  {/* Delete button */}
+                  <TouchableOpacity
+                    onPress={() => handleDeleteSession(item.id)}
+                    className="w-7 h-7 items-center justify-center ml-2"
+                  >
+                    <Ionicons name="trash-outline" size={16} color="#ef4444" />
+                  </TouchableOpacity>
+                </TouchableOpacity>
+              )}
+              ItemSeparatorComponent={() => (
+                <View className="h-px bg-gray-100 dark:bg-gray-700 mx-4" />
+              )}
+            />
+          </TouchableOpacity>
+        </TouchableOpacity>
+      </Modal>
     </View>
   );
 }
