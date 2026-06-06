@@ -193,13 +193,23 @@ export default function AiChat({
           </TouchableOpacity>
         )}
 
-        {/* New chat button */}
+        {/* New chat button — disabled when current chat is already empty */}
         <TouchableOpacity
           onPress={handleNewChat}
+          disabled={messages.length === 0}
           className="w-7 h-7 items-center justify-center rounded-full"
-          style={{ backgroundColor: "rgba(255,255,255,0.2)" }}
+          style={{
+            backgroundColor:
+              messages.length === 0
+                ? "rgba(255,255,255,0.1)"
+                : "rgba(255,255,255,0.2)",
+          }}
         >
-          <Ionicons name="add" size={16} color="#fff" />
+          <Ionicons
+            name="add"
+            size={16}
+            color={messages.length === 0 ? "rgba(255,255,255,0.4)" : "#fff"}
+          />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setExpanded(false)}>
