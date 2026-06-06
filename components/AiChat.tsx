@@ -63,6 +63,12 @@ export default function AiChat({
   );
   const messages: ChatMessage[] = activeSession?.messages ?? [];
 
+  // Only show sessions that have at least one message in history
+  const nonEmptySessions = useMemo(
+    () => sessions.filter((s) => s.messages.length > 0),
+    [sessions],
+  );
+
   function ensureSession(): string {
     if (activeSessionId) return activeSessionId;
     return createSession(householdId);
@@ -117,7 +123,7 @@ export default function AiChat({
   }
 
   function handleNewChat() {
-    createSession(householdId);
+    setActiveSession(null);
     setInput("");
   }
 
@@ -128,9 +134,6 @@ export default function AiChat({
 
   function handleDeleteSession(sessionId: string) {
     deleteSession(sessionId);
-    if (sessions.length <= 1) {
-      setHistoryOpen(false);
-    }
   }
 
   function formatDate(timestamp: number): string {
@@ -180,7 +183,7 @@ export default function AiChat({
         </TouchableOpacity>
 
         {/* History dropdown button */}
-        {sessions.length > 0 && (
+        {nonEmptySessions.length > 0 && (
           <TouchableOpacity
             onPress={() => setHistoryOpen(true)}
             className="w-7 h-7 items-center justify-center rounded-full"
@@ -352,7 +355,7 @@ export default function AiChat({
 
             {/* Session List */}
             <FlatList
-              data={sessions}
+              data={nonEmptySessions}
               keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingVertical: 4 }}
               ListEmptyComponent={
