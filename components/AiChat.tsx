@@ -41,7 +41,15 @@ export default function AiChat({ year, month, householdId, householdName, househ
   const chatMutation = useChatMutation();
 
   // Chat store
-  const { sessions, activeSessionId, createSession, setActiveSession, addMessage, deleteSession } = useChatStore();
+  const {
+    sessions,
+    activeSessionId,
+    createSession,
+    setActiveSession,
+    addMessage,
+    deleteSession,
+    getSessionsForHousehold,
+  } = useChatStore();
 
   // Start fresh on page load — clear active session so a new one is created
   useEffect(() => {
@@ -55,8 +63,12 @@ export default function AiChat({ year, month, householdId, householdName, househ
   );
   const messages: ChatMessage[] = activeSession?.messages ?? [];
 
-  // Only show sessions that have at least one message in history
-  const nonEmptySessions = useMemo(() => sessions.filter((s) => s.messages.length > 0), [sessions]);
+  // Only show sessions relevant to current household context (or general if no household)
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- sessions needed for reactivity since getSessionsForHousehold uses get()
+  const nonEmptySessions = useMemo(
+    () => getSessionsForHousehold(householdId),
+    [sessions, householdId, getSessionsForHousehold],
+  );
 
   function ensureSession(): string {
     if (activeSessionId) return activeSessionId;

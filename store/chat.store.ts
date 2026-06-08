@@ -24,6 +24,7 @@ interface ChatState {
   addMessage: (sessionId: string, msg: ChatMessage) => void;
   deleteSession: (sessionId: string) => void;
   clearAllSessions: () => void;
+  getSessionsForHousehold: (householdId?: number) => ChatSession[];
 }
 
 function generateId(): string {
@@ -69,10 +70,7 @@ export const useChatStore = create<ChatState>()(
             if (s.id !== sessionId) return s;
             const messages = [...s.messages, msg];
             // Auto-title from first user message
-            const title =
-              s.title === "New chat" && msg.role === "user"
-                ? generateTitle(msg.content)
-                : s.title;
+            const title = s.title === "New chat" && msg.role === "user" ? generateTitle(msg.content) : s.title;
             return { ...s, messages, title, updatedAt: Date.now() };
           }),
         }));
@@ -81,14 +79,31 @@ export const useChatStore = create<ChatState>()(
       deleteSession: (sessionId) => {
         set((state) => {
           const sessions = state.sessions.filter((s) => s.id !== sessionId);
-          const activeSessionId =
-            state.activeSessionId === sessionId ? null : state.activeSessionId;
+          const activeSessionId = state.activeSessionId === sessionId ? null : state.activeSessionId;
           return { sessions, activeSessionId };
         });
       },
 
       clearAllSessions: () => {
         set({ sessions: [], activeSessionId: null });
+      },
+
+      /**
+       * Returns sessions filtered by household context:
+       * - If householdId is provided: returns sessions belonging to that household
+       * - If householdId is undefined/null: returns sessions that have no household (general/all)
+       * Only returns sessions that have at least one message.
+       */
+      getSessionsForHousehold: (householdId?: number) => {
+        const { sessions } = get();
+        return sessions.filter((s) => {
+          if (s.messages.length === 0) return false;
+          if (householdId != null) {
+            return s.householdId === householdId;
+          }
+          // No household specified — show sessions without a specific household
+          return s.householdId == null;
+        });
       },
     }),
     {
