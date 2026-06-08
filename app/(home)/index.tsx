@@ -30,12 +30,19 @@ export default function HomeScreen() {
 
   // ── Data ──────────────────────────────────────────────────────────────────
   const { data: households, isLoading: householdsLoading } = useHouseholds();
-  const { setActiveHousehold } = useHouseholdStore();
+  const { activeHousehold, _hasHydrated, setActiveHousehold } = useHouseholdStore();
   const createHousehold = useCreateHousehold();
   const { data: allOverview, isLoading: allOverviewLoading } = useAllHouseholdsYearOverview(
     households?.map((h) => h.id) ?? [],
     CURRENT_YEAR,
   );
+
+  // If there's a persisted active household, redirect to the household (tabs) page
+  useEffect(() => {
+    if (_hasHydrated && activeHousehold) {
+      router.replace("/(tabs)");
+    }
+  }, [_hasHydrated, activeHousehold, router]);
 
   // Reset form whenever it is hidden
   useEffect(() => {
