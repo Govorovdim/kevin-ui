@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useEffect } from "react";
 import {
   View,
   Text,
@@ -30,13 +30,7 @@ interface AiChatProps {
   households?: Household[];
 }
 
-export default function AiChat({
-  year,
-  month,
-  householdId,
-  householdName,
-  households,
-}: AiChatProps) {
+export default function AiChat({ year, month, householdId, householdName, households }: AiChatProps) {
   const { colorScheme } = useColorScheme();
   const isDark = colorScheme === "dark";
   const [expanded, setExpanded] = useState(false);
@@ -47,14 +41,12 @@ export default function AiChat({
   const chatMutation = useChatMutation();
 
   // Chat store
-  const {
-    sessions,
-    activeSessionId,
-    createSession,
-    setActiveSession,
-    addMessage,
-    deleteSession,
-  } = useChatStore();
+  const { sessions, activeSessionId, createSession, setActiveSession, addMessage, deleteSession } = useChatStore();
+
+  // Start fresh on page load — clear active session so a new one is created
+  useEffect(() => {
+    setActiveSession(null);
+  }, []);
 
   // Get active session's messages
   const activeSession = useMemo(
@@ -64,10 +56,7 @@ export default function AiChat({
   const messages: ChatMessage[] = activeSession?.messages ?? [];
 
   // Only show sessions that have at least one message in history
-  const nonEmptySessions = useMemo(
-    () => sessions.filter((s) => s.messages.length > 0),
-    [sessions],
-  );
+  const nonEmptySessions = useMemo(() => sessions.filter((s) => s.messages.length > 0), [sessions]);
 
   function ensureSession(): string {
     if (activeSessionId) return activeSessionId;
@@ -104,10 +93,7 @@ export default function AiChat({
             content: data.message,
           };
           addMessage(sessionId, assistantMsg);
-          setTimeout(
-            () => scrollRef.current?.scrollToEnd({ animated: true }),
-            100,
-          );
+          setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
         },
         onError: () => {
           const errorMsg: ChatMessage = {
@@ -155,9 +141,7 @@ export default function AiChat({
         style={{ gap: 8 }}
       >
         <Ionicons name="chatbubble-ellipses-outline" size={20} color="#fff" />
-        <Text className="text-white font-semibold text-sm flex-1">
-          Ask Kevin AI...
-        </Text>
+        <Text className="text-white font-semibold text-sm flex-1">Ask Kevin AI...</Text>
         <Ionicons name="chevron-down" size={18} color="#fff" />
       </TouchableOpacity>
     );
@@ -167,19 +151,14 @@ export default function AiChat({
   return (
     <View className="bg-white dark:bg-gray-800 rounded-2xl mb-4 shadow-sm overflow-hidden border border-primary-200 dark:border-primary-800">
       {/* Header */}
-      <View
-        className="bg-primary-600 px-4 py-3 flex-row items-center"
-        style={{ gap: 8 }}
-      >
+      <View className="bg-primary-600 px-4 py-3 flex-row items-center" style={{ gap: 8 }}>
         <TouchableOpacity
           onPress={() => setExpanded(false)}
           className="flex-row items-center flex-1"
           style={{ gap: 8 }}
         >
           <Ionicons name="chatbubble-ellipses" size={18} color="#fff" />
-          <Text className="text-white font-semibold text-sm flex-1">
-            Kevin AI Assistant
-          </Text>
+          <Text className="text-white font-semibold text-sm flex-1">Kevin AI Assistant</Text>
         </TouchableOpacity>
 
         {/* History dropdown button */}
@@ -199,17 +178,10 @@ export default function AiChat({
           disabled={messages.length === 0}
           className="w-7 h-7 items-center justify-center rounded-full"
           style={{
-            backgroundColor:
-              messages.length === 0
-                ? "rgba(255,255,255,0.1)"
-                : "rgba(255,255,255,0.2)",
+            backgroundColor: messages.length === 0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.2)",
           }}
         >
-          <Ionicons
-            name="add"
-            size={16}
-            color={messages.length === 0 ? "rgba(255,255,255,0.4)" : "#fff"}
-          />
+          <Ionicons name="add" size={16} color={messages.length === 0 ? "rgba(255,255,255,0.4)" : "#fff"} />
         </TouchableOpacity>
 
         <TouchableOpacity onPress={() => setExpanded(false)}>
@@ -218,12 +190,7 @@ export default function AiChat({
       </View>
 
       {/* Messages */}
-      <ScrollView
-        ref={scrollRef}
-        className="px-3 py-2"
-        style={{ maxHeight: 280 }}
-        showsVerticalScrollIndicator={false}
-      >
+      <ScrollView ref={scrollRef} className="px-3 py-2" style={{ maxHeight: 280 }} showsVerticalScrollIndicator={false}>
         {messages.length === 0 && (
           <Text className="text-gray-400 dark:text-gray-500 text-xs text-center py-4">
             Ask me to add expenses, income, assets, or liabilities.{"\n"}
@@ -232,15 +199,10 @@ export default function AiChat({
         )}
 
         {messages.map((msg, i) => (
-          <View
-            key={i}
-            className={`mb-2 ${msg.role === "user" ? "items-end" : "items-start"}`}
-          >
+          <View key={i} className={`mb-2 ${msg.role === "user" ? "items-end" : "items-start"}`}>
             <View
               className={`rounded-xl px-3 py-2 max-w-[85%] ${
-                msg.role === "user"
-                  ? "bg-primary-600"
-                  : "bg-gray-100 dark:bg-gray-700"
+                msg.role === "user" ? "bg-primary-600" : "bg-gray-100 dark:bg-gray-700"
               }`}
             >
               {msg.role === "user" ? (
@@ -298,9 +260,7 @@ export default function AiChat({
       </ScrollView>
 
       {/* Input */}
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
-      >
+      <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : undefined}>
         <View
           className="flex-row items-center px-3 py-2 border-t border-gray-100 dark:border-gray-700"
           style={{ gap: 8 }}
@@ -322,22 +282,13 @@ export default function AiChat({
             disabled={!input.trim() || chatMutation.isPending}
             className="w-8 h-8 items-center justify-center"
           >
-            <Ionicons
-              name="send"
-              size={20}
-              color={input.trim() ? "#2563eb" : "#9ca3af"}
-            />
+            <Ionicons name="send" size={20} color={input.trim() ? "#2563eb" : "#9ca3af"} />
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
 
       {/* History Modal */}
-      <Modal
-        visible={historyOpen}
-        transparent
-        animationType="fade"
-        onRequestClose={() => setHistoryOpen(false)}
-      >
+      <Modal visible={historyOpen} transparent animationType="fade" onRequestClose={() => setHistoryOpen(false)}>
         <TouchableOpacity
           activeOpacity={1}
           onPress={() => setHistoryOpen(false)}
@@ -351,15 +302,9 @@ export default function AiChat({
           >
             {/* Modal Header */}
             <View className="flex-row items-center justify-between px-4 py-3 border-b border-gray-100 dark:border-gray-700">
-              <Text className="text-base font-semibold text-gray-900 dark:text-white">
-                Chat History
-              </Text>
+              <Text className="text-base font-semibold text-gray-900 dark:text-white">Chat History</Text>
               <TouchableOpacity onPress={() => setHistoryOpen(false)}>
-                <Ionicons
-                  name="close"
-                  size={22}
-                  color={isDark ? "#fff" : "#374151"}
-                />
+                <Ionicons name="close" size={22} color={isDark ? "#fff" : "#374151"} />
               </TouchableOpacity>
             </View>
 
@@ -368,30 +313,20 @@ export default function AiChat({
               data={nonEmptySessions}
               keyExtractor={(item) => item.id}
               contentContainerStyle={{ paddingVertical: 4 }}
-              ListEmptyComponent={
-                <Text className="text-gray-400 text-sm text-center py-8">
-                  No conversations yet
-                </Text>
-              }
+              ListEmptyComponent={<Text className="text-gray-400 text-sm text-center py-8">No conversations yet</Text>}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   onPress={() => handleSelectSession(item)}
                   className={`flex-row items-center px-4 py-3 ${
-                    item.id === activeSessionId
-                      ? "bg-primary-50 dark:bg-primary-900/20"
-                      : ""
+                    item.id === activeSessionId ? "bg-primary-50 dark:bg-primary-900/20" : ""
                   }`}
                 >
                   <View className="flex-1" style={{ gap: 2 }}>
-                    <Text
-                      className="text-sm font-medium text-gray-900 dark:text-white"
-                      numberOfLines={1}
-                    >
+                    <Text className="text-sm font-medium text-gray-900 dark:text-white" numberOfLines={1}>
                       {item.title}
                     </Text>
                     <Text className="text-xs text-gray-400 dark:text-gray-500">
-                      {item.messages.length} messages ·{" "}
-                      {formatDate(item.updatedAt)}
+                      {item.messages.length} messages · {formatDate(item.updatedAt)}
                     </Text>
                   </View>
 
@@ -404,9 +339,7 @@ export default function AiChat({
                   </TouchableOpacity>
                 </TouchableOpacity>
               )}
-              ItemSeparatorComponent={() => (
-                <View className="h-px bg-gray-100 dark:bg-gray-700 mx-4" />
-              )}
+              ItemSeparatorComponent={() => <View className="h-px bg-gray-100 dark:bg-gray-700 mx-4" />}
             />
           </TouchableOpacity>
         </TouchableOpacity>
