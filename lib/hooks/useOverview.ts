@@ -93,6 +93,12 @@ export function useAllHouseholdsYearOverview(
   });
 
   const isLoading = results.some((r) => r.isLoading);
+  const perHousehold = isLoading
+    ? []
+    : householdIds.map((id, i) => ({
+        id,
+        overview: results[i].data ?? null,
+      }));
   const data = isLoading
     ? null
     : {
@@ -122,5 +128,5 @@ export function useAllHouseholdsYearOverview(
         ),
       };
 
-  return { data, isLoading };
+  return { data, perHousehold, isLoading };
 }

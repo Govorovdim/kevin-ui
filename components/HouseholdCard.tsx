@@ -95,6 +95,9 @@ function CardContent({
       </View>
 
       {/* Net Worth hero number */}
+      <Text className="text-gray-500 dark:text-gray-400 text-xs font-medium mb-1">
+        Net Worth
+      </Text>
       <Text className="text-primary-600 text-3xl font-bold mb-4">
         {formatCurrency(overview.net_worth, currency, { decimals: false })}
       </Text>

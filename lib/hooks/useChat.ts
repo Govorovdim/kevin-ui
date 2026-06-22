@@ -17,9 +17,20 @@ export interface ChatResponse {
   actions: ActionResult[];
 }
 
+interface HouseholdSummary {
+  currency?: string;
+  year?: number;
+  net_worth?: number;
+  portfolio_value?: number;
+  total_debt?: number;
+  total_income?: number;
+  total_expenses?: number;
+}
+
 interface Household {
   id: number;
   name: string;
+  summary?: HouseholdSummary;
 }
 
 interface ChatPayload {
@@ -48,9 +59,30 @@ export function useChatMutation() {
         contextContent = `[System context: Currently managing household "${householdName}"${householdId ? ` (id=${householdId})` : ""}. Use this household unless the user specifies a different one. IMPORTANT: Never show IDs to the user. Refer to records by their name, amount, and date (month/year) instead.]`;
       } else if (households && households.length > 0) {
         const list = households
-          .map((h) => `"${h.name}" (id=${h.id})`)
-          .join(", ");
-        contextContent = `[System context: User has the following households: ${list}. When searching or querying records, search across ALL households and show results from all of them. Only ask which household to use when the user wants to ADD or REMOVE a record and hasn't specified which household. IMPORTANT: Never show IDs to the user. Refer to records by their name, amount, date (month/year), and household name instead.]`;
+          .map((h) => {
+            const s = h.summary;
+            if (!s) return `"${h.name}" (id=${h.id})`;
+            const cur = s.currency ?? "USD";
+            const parts = [
+              s.net_worth != null ? `net worth ${cur} ${s.net_worth}` : null,
+              s.portfolio_value != null
+                ? `portfolio ${cur} ${s.portfolio_value}`
+                : null,
+              s.total_debt != null
+                ? `liabilities ${cur} ${s.total_debt}`
+                : null,
+              s.total_income != null ? `income ${cur} ${s.total_income}` : null,
+              s.total_expenses != null
+                ? `expenses ${cur} ${s.total_expenses}`
+                : null,
+            ].filter(Boolean);
+            const summaryText = parts.length
+              ? ` — ${s.year ?? "current year"} totals: ${parts.join(", ")}`
+              : "";
+            return `"${h.name}" (id=${h.id})${summaryText}`;
+          })
+          .join("; ");
+        contextContent = `[System context: User has the following households with their financial summaries: ${list}. These net worth/portfolio/liability figures are computed aggregates (not individual records), so answer questions about them directly from this context instead of searching for a matching record. When searching or querying individual records, search across ALL households and show results from all of them. Only ask which household to use when the user wants to ADD or REMOVE a record and hasn't specified which household. IMPORTANT: Never show IDs to the user. Refer to records by their name, amount, date (month/year), and household name instead.]`;
       } else {
         contextContent = `[System context: No household selected.]`;
       }

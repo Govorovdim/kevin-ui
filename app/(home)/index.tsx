@@ -53,11 +53,14 @@ export default function HomeScreen() {
   const { activeHousehold, _hasHydrated, setActiveHousehold } =
     useHouseholdStore();
   const createHousehold = useCreateHousehold();
-  const { data: allOverview, isLoading: allOverviewLoading } =
-    useAllHouseholdsYearOverview(
-      households?.map((h) => h.id) ?? [],
-      CURRENT_YEAR,
-    );
+  const {
+    data: allOverview,
+    perHousehold,
+    isLoading: allOverviewLoading,
+  } = useAllHouseholdsYearOverview(
+    households?.map((h) => h.id) ?? [],
+    CURRENT_YEAR,
+  );
 
   // If there's a persisted active household, redirect to the household (tabs) page
   useEffect(() => {
@@ -187,7 +190,26 @@ export default function HomeScreen() {
 
           {/* ── AI Chat ────────────────────────────────────────────────────── */}
           <AiChat
-            households={households?.map((h) => ({ id: h.id, name: h.name }))}
+            households={households?.map((h) => {
+              const overview = perHousehold.find(
+                (p) => p.id === h.id,
+              )?.overview;
+              return {
+                id: h.id,
+                name: h.name,
+                summary: overview
+                  ? {
+                      currency: h.currency,
+                      year: CURRENT_YEAR,
+                      net_worth: overview.net_worth,
+                      portfolio_value: overview.portfolio_value,
+                      total_debt: overview.total_debt,
+                      total_income: overview.total_income,
+                      total_expenses: overview.total_expenses,
+                    }
+                  : undefined,
+              };
+            })}
           />
 
           {/* ── All households summary ──────────────────────────────────────── */}
