@@ -24,14 +24,16 @@ function StatPill({
 }: {
   label: string;
   value: string;
-  color: "green" | "red" | "blue";
+  color: "green" | "red" | "blue" | "orange";
 }) {
   const textColor =
     color === "green"
       ? "text-success-600"
       : color === "red"
         ? "text-danger-600"
-        : "text-primary-600";
+        : color === "orange"
+          ? "text-warning-600"
+          : "text-primary-600";
 
   return (
     <View className="bg-gray-100 dark:bg-gray-700 rounded-full px-3 py-1 items-center">
@@ -61,8 +63,6 @@ function CardContent({
   overview: YearOverview;
 }) {
   const currency = household.currency ?? "USD";
-  const savingsColor: "blue" | "red" =
-    overview.net_savings >= 0 ? "blue" : "red";
 
   return (
     <>
@@ -100,7 +100,7 @@ function CardContent({
       </Text>
 
       {/* Stat pills */}
-      <View className="flex-row" style={{ gap: 8 }}>
+      <View className="flex-row flex-wrap" style={{ gap: 8 }}>
         <StatPill
           label="Income"
           value={formatCurrency(overview.total_income, currency, {
@@ -113,7 +113,7 @@ function CardContent({
           value={formatCurrency(overview.total_expenses, currency, {
             decimals: false,
           })}
-          color="red"
+          color="orange"
         />
         <StatPill
           label="Portfolio"
@@ -121,6 +121,13 @@ function CardContent({
             decimals: false,
           })}
           color="blue"
+        />
+        <StatPill
+          label="Liabilities"
+          value={formatCurrency(overview.total_debt, currency, {
+            decimals: false,
+          })}
+          color="red"
         />
       </View>
     </>
