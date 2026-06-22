@@ -126,10 +126,13 @@ export default function HomeScreen() {
 
   // ── Loading ────────────────────────────────────────────────────────────────
   // Also covers the brief moment while we auto-create the first household.
+  // Once auto-create has been triggered (success or failure), stop forcing the
+  // spinner so we never get stuck on an indefinite loading state.
   const isAutoCreating =
-    (households && households.length === 0) || createHousehold.isPending;
+    createHousehold.isPending ||
+    (!autoCreateTriggered.current && (households?.length ?? 0) === 0);
 
-  if (householdsLoading || (isAutoCreating && !householdsError)) {
+  if (householdsLoading || (!householdsError && isAutoCreating)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950 items-center justify-center">
         <ActivityIndicator size="large" color="#2563eb" />

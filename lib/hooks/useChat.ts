@@ -100,7 +100,7 @@ export function useChatMutation() {
       return res.data;
     },
     onSuccess: () => {
-      qc.invalidateQueries();
+      qc.invalidateQueries({ queryKey: ["overview"] });
     },
   });
 }

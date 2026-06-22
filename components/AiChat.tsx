@@ -69,7 +69,7 @@ export default function AiChat({
   // Start fresh on page load — clear active session so a new one is created
   useEffect(() => {
     setActiveSession(null);
-  }, []);
+  }, [setActiveSession]);
 
   // Get active session's messages
   const activeSession = useMemo(
