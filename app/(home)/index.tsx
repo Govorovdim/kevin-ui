@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -9,6 +9,7 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { useRouter } from "expo-router";
+import AiChat from "../../components/AiChat";
 
 import {
   useHouseholds,
@@ -24,6 +25,8 @@ import { formatCurrency } from "../../lib/format";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const CURRENT_YEAR = new Date().getFullYear();
+const DEFAULT_HOUSEHOLD_NAME = "My Household";
+const DEFAULT_HOUSEHOLD_CURRENCY = "USD";
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -37,15 +40,52 @@ export default function HomeScreen() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // Guards the one-time automatic household creation for brand-new users
+  const autoCreateTriggered = useRef(false);
+
   // ── Data ──────────────────────────────────────────────────────────────────
-  const { data: households, isLoading: householdsLoading } = useHouseholds();
-  const { setActiveHousehold } = useHouseholdStore();
+  const {
+    data: households,
+    isLoading: householdsLoading,
+    error: householdsError,
+    refetch: refetchHouseholds,
+  } = useHouseholds();
+  const { activeHousehold, _hasHydrated, setActiveHousehold } =
+    useHouseholdStore();
   const createHousehold = useCreateHousehold();
-  const { data: allOverview, isLoading: allOverviewLoading } =
-    useAllHouseholdsYearOverview(
-      households?.map((h) => h.id) ?? [],
-      CURRENT_YEAR,
-    );
+  const {
+    data: allOverview,
+    perHousehold,
+    isLoading: allOverviewLoading,
+  } = useAllHouseholdsYearOverview(
+    households?.map((h) => h.id) ?? [],
+    CURRENT_YEAR,
+  );
+
+  // If there's a persisted active household, redirect to the household (tabs) page
+  useEffect(() => {
+    if (_hasHydrated && activeHousehold) {
+      router.replace("/(tabs)");
+    }
+  }, [_hasHydrated, activeHousehold, router]);
+
+  // Brand-new user (no households): silently create a default one for them
+  // instead of showing a dedicated onboarding screen.
+  useEffect(() => {
+    if (
+      !householdsLoading &&
+      !householdsError &&
+      households &&
+      households.length === 0 &&
+      !autoCreateTriggered.current
+    ) {
+      autoCreateTriggered.current = true;
+      createHousehold.mutate({
+        name: DEFAULT_HOUSEHOLD_NAME,
+        currency: DEFAULT_HOUSEHOLD_CURRENCY,
+      });
+    }
+  }, [householdsLoading, householdsError, households, createHousehold]);
 
   // Reset form whenever it is hidden
   useEffect(() => {
@@ -57,6 +97,10 @@ export default function HomeScreen() {
   }, [showCreateForm]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  function handleRetry() {
+    refetchHouseholds();
+  }
+
   function handleCreate() {
     const name = householdName.trim();
     if (!name) {
@@ -81,7 +125,14 @@ export default function HomeScreen() {
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (householdsLoading) {
+  // Also covers the brief moment while we auto-create the first household.
+  // Once auto-create has been triggered (success or failure), stop forcing the
+  // spinner so we never get stuck on an indefinite loading state.
+  const isAutoCreating =
+    createHousehold.isPending ||
+    (!autoCreateTriggered.current && (households?.length ?? 0) === 0);
+
+  if (householdsLoading || (!householdsError && isAutoCreating)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950 items-center justify-center">
         <ActivityIndicator size="large" color="#2563eb" />
@@ -89,48 +140,23 @@ export default function HomeScreen() {
     );
   }
 
-  // ── Onboarding (no households yet) ────────────────────────────────────────
-  if (!households || households.length === 0) {
+  // ── Error (e.g. backend is down) ──────────────────────────────────────────
+  if (householdsError) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950 items-center justify-center px-8">
-        <Text className="text-6xl mb-4">🏠</Text>
+        <Text className="text-6xl mb-4">🔌</Text>
         <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-          Welcome to Kevin
+          Connection Error
         </Text>
         <Text className="text-gray-500 dark:text-gray-400 text-base text-center mb-8">
-          Create a household to get started
+          Unable to reach the server. Please check that the backend is up and
+          running, then try again.
         </Text>
-
-        <TextInput
-          className={`w-full bg-white dark:bg-gray-700 border rounded-xl px-4 py-3 text-gray-900 dark:text-white text-base mb-4 ${
-            householdNameError
-              ? "border-red-500"
-              : "border-gray-200 dark:border-gray-600"
-          }`}
-          placeholder="Household name"
-          placeholderTextColor="#9ca3af"
-          value={householdName}
-          onChangeText={(t) => {
-            setHouseholdName(t);
-            if (householdNameError) setHouseholdNameError(false);
-          }}
-          autoCapitalize="words"
-        />
-
-        <CurrencyPicker value={currency} onChange={setCurrency} />
-
         <TouchableOpacity
-          className="w-full bg-primary-600 rounded-xl py-4 items-center"
-          onPress={handleCreate}
-          disabled={createHousehold.isPending}
+          className="bg-primary-600 rounded-xl px-8 py-3 items-center"
+          onPress={handleRetry}
         >
-          {createHousehold.isPending ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">
-              Create Household
-            </Text>
-          )}
+          <Text className="text-white font-semibold text-base">Retry</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -165,6 +191,30 @@ export default function HomeScreen() {
             onClose={() => setMenuVisible(false)}
           />
 
+          {/* ── AI Chat ────────────────────────────────────────────────────── */}
+          <AiChat
+            households={households?.map((h) => {
+              const overview = perHousehold.find(
+                (p) => p.id === h.id,
+              )?.overview;
+              return {
+                id: h.id,
+                name: h.name,
+                summary: overview
+                  ? {
+                      currency: h.currency,
+                      year: CURRENT_YEAR,
+                      net_worth: overview.net_worth,
+                      portfolio_value: overview.portfolio_value,
+                      total_debt: overview.total_debt,
+                      total_income: overview.total_income,
+                      total_expenses: overview.total_expenses,
+                    }
+                  : undefined,
+              };
+            })}
+          />
+
           {/* ── All households summary ──────────────────────────────────────── */}
           {allOverview && !allOverviewLoading && (
             <View className="bg-primary-600 rounded-2xl p-5 mb-5">
@@ -187,7 +237,7 @@ export default function HomeScreen() {
                 </View>
                 <View className="bg-primary-800 dark:bg-primary-900 rounded-full px-3 py-1.5">
                   <Text className="text-primary-200 text-xs font-medium">
-                    Debt{" "}
+                    Liabilities{" "}
                     {formatCurrency(allOverview.total_debt, "USD", {
                       decimals: false,
                     })}
@@ -263,7 +313,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
           {/* ── Household cards ─────────────────────────────────────────────── */}
-          {households.map((household) => (
+          {households?.map((household) => (
             <HouseholdCard
               key={household.id}
               household={household}

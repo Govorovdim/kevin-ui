@@ -9,6 +9,7 @@ import {
 import { SafeAreaView } from "react-native-safe-area-context";
 import { Ionicons } from "@expo/vector-icons";
 import { useRouter } from "expo-router";
+import AiChat from "../../components/AiChat";
 
 import { useHouseholds } from "../../lib/hooks/useHouseholds";
 import {
@@ -68,7 +69,7 @@ export default function DashboardScreen() {
   const [menuVisible, setMenuVisible] = useState(false);
 
   const { isLoading: householdsLoading } = useHouseholds();
-  const { activeHousehold } = useHouseholdStore();
+  const { activeHousehold, clearActiveHousehold } = useHouseholdStore();
 
   const { data: overview, isLoading: overviewLoading } = useYearOverview(
     activeHousehold?.id ?? null,
@@ -119,7 +120,10 @@ export default function DashboardScreen() {
             {/* Back button + Household name + burger on same line */}
             <View className="flex-row items-center justify-between mb-3">
               <TouchableOpacity
-                onPress={() => router.back()}
+                onPress={() => {
+                  clearActiveHousehold();
+                  router.replace("/(home)");
+                }}
                 hitSlop={{ top: 12, bottom: 12, left: 12, right: 12 }}
                 className="w-8"
               >
@@ -178,6 +182,13 @@ export default function DashboardScreen() {
             onClose={() => setMenuVisible(false)}
           />
 
+          {/* ── AI Chat ───────────────────────────────────────────────────── */}
+          <AiChat
+            year={year}
+            householdId={activeHousehold?.id}
+            householdName={activeHousehold?.name}
+          />
+
           {/* ── 2. Net Worth hero card ────────────────────────────────────── */}
           <View className="bg-primary-600 rounded-2xl p-5 mb-5">
             <Text className="text-primary-200 text-xs font-medium mb-1">
@@ -203,7 +214,7 @@ export default function DashboardScreen() {
               </View>
               <View className="bg-primary-800 dark:bg-primary-900 rounded-full px-3 py-1.5">
                 <Text className="text-primary-200 text-xs font-medium">
-                  Debt{" "}
+                  Liabilities{" "}
                   {formatCurrency(
                     overview.total_debt,
                     activeHousehold?.currency ?? "USD",
@@ -215,9 +226,9 @@ export default function DashboardScreen() {
           </View>
 
           {/* ── 3. Summary strip ─────────────────────────────────────────── */}
-          <View className="flex-row mb-5" style={{ gap: 10 }}>
+          <View className="flex-row mb-5 flex-wrap" style={{ gap: 10 }}>
             {/* Income */}
-            <View className="flex-1 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <View className="flex-1 min-w-[80px] bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
               <Text className="text-gray-500 dark:text-gray-400 text-xs mb-1">
                 Income
               </Text>
@@ -234,12 +245,12 @@ export default function DashboardScreen() {
             </View>
 
             {/* Expenses */}
-            <View className="flex-1 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <View className="flex-1 min-w-[80px] bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
               <Text className="text-gray-500 dark:text-gray-400 text-xs mb-1">
                 Expenses
               </Text>
               <Text
-                className="text-danger-600 font-bold text-sm"
+                className="text-warning-600 font-bold text-sm"
                 numberOfLines={1}
               >
                 {formatCurrency(
@@ -251,7 +262,7 @@ export default function DashboardScreen() {
             </View>
 
             {/* Portfolio */}
-            <View className="flex-1 bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+            <View className="flex-1 min-w-[80px] bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
               <Text className="text-gray-500 dark:text-gray-400 text-xs mb-1">
                 Portfolio
               </Text>
@@ -261,6 +272,23 @@ export default function DashboardScreen() {
               >
                 {formatCurrency(
                   overview.portfolio_value,
+                  activeHousehold?.currency ?? "USD",
+                  { decimals: false },
+                )}
+              </Text>
+            </View>
+
+            {/* Liabilities */}
+            <View className="flex-1 min-w-[80px] bg-white dark:bg-gray-800 rounded-xl p-4 shadow-sm">
+              <Text className="text-gray-500 dark:text-gray-400 text-xs mb-1">
+                Liabilities
+              </Text>
+              <Text
+                className="text-danger-600 font-bold text-sm"
+                numberOfLines={1}
+              >
+                {formatCurrency(
+                  overview.total_debt,
                   activeHousehold?.currency ?? "USD",
                   { decimals: false },
                 )}
@@ -276,7 +304,7 @@ export default function DashboardScreen() {
             <LineChart
               datasets={[
                 { data: incomeData, color: "#16a34a", label: "Income" },
-                { data: expensesData, color: "#dc2626", label: "Expenses" },
+                { data: expensesData, color: "#d97706", label: "Expenses" },
               ]}
               height={160}
               currency={activeHousehold?.currency ?? "USD"}
@@ -291,7 +319,7 @@ export default function DashboardScreen() {
             <LineChart
               datasets={[
                 { data: portfolioData, color: "#2563eb", label: "Portfolio" },
-                { data: debtData, color: "#ef4444", label: "Liabilities" },
+                { data: debtData, color: "#dc2626", label: "Liabilities" },
               ]}
               height={140}
               showZeroLine
@@ -304,6 +332,39 @@ export default function DashboardScreen() {
             Months
           </Text>
           <View className="bg-white dark:bg-gray-800 rounded-2xl mb-10 overflow-hidden shadow-sm">
+            {/* Table Header */}
+            <View className="flex-row items-center justify-between px-4 py-2 bg-gray-50 dark:bg-gray-700/50 border-b border-gray-100 dark:border-gray-700">
+              <Text className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase w-20">
+                Month
+              </Text>
+              <View className="flex-row items-center" style={{ gap: 8 }}>
+                <Text
+                  className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase text-right"
+                  style={{ width: 60 }}
+                >
+                  Income
+                </Text>
+                <Text
+                  className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase text-right"
+                  style={{ width: 60 }}
+                >
+                  Expenses
+                </Text>
+                <Text
+                  className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase text-right"
+                  style={{ width: 60 }}
+                >
+                  Portfolio
+                </Text>
+                <Text
+                  className="text-[10px] font-bold text-gray-400 dark:text-gray-500 uppercase text-right"
+                  style={{ width: 60 }}
+                >
+                  Liabilities
+                </Text>
+              </View>
+            </View>
+
             {MONTH_NAMES.map((name, index) => {
               const monthNum = index + 1;
               const monthData = overview.months.find(
@@ -316,6 +377,7 @@ export default function DashboardScreen() {
                   monthData.net_savings === 0);
 
               const monthPortfolio = monthlyPortfolio?.[index] ?? 0;
+              const monthDebt = monthlyDebt?.[index] ?? 0;
 
               return (
                 <TouchableOpacity
@@ -337,29 +399,31 @@ export default function DashboardScreen() {
                   <Text
                     className={
                       isEmpty
-                        ? "text-gray-300 dark:text-gray-600 font-medium text-sm w-24"
-                        : "text-gray-900 dark:text-white font-medium text-sm w-24"
+                        ? "text-gray-300 dark:text-gray-600 font-medium text-sm w-20"
+                        : "text-gray-900 dark:text-white font-medium text-sm w-20"
                     }
                   >
                     {name}
                   </Text>
 
                   {/* Financial values */}
-                  <View className="flex-row items-center" style={{ gap: 10 }}>
+                  <View className="flex-row items-center" style={{ gap: 8 }}>
                     {/* Income */}
                     <Text
                       className={
                         isEmpty
-                          ? "text-gray-300 dark:text-gray-600 text-xs"
-                          : "text-success-600 text-xs"
+                          ? "text-gray-300 dark:text-gray-600 text-[10px]"
+                          : "text-success-600 text-[10px]"
                       }
-                      style={{ width: 68, textAlign: "right" }}
+                      style={{ width: 60, textAlign: "right" }}
                       numberOfLines={1}
                     >
                       {formatCurrency(
                         monthData?.total_income ?? 0,
                         activeHousehold?.currency ?? "USD",
-                        { decimals: false },
+                        {
+                          decimals: false,
+                        },
                       )}
                     </Text>
 
@@ -367,16 +431,18 @@ export default function DashboardScreen() {
                     <Text
                       className={
                         isEmpty
-                          ? "text-gray-300 dark:text-gray-600 text-xs"
-                          : "text-danger-600 text-xs"
+                          ? "text-gray-300 dark:text-gray-600 text-[10px]"
+                          : "text-warning-600 text-[10px]"
                       }
-                      style={{ width: 68, textAlign: "right" }}
+                      style={{ width: 60, textAlign: "right" }}
                       numberOfLines={1}
                     >
                       {formatCurrency(
                         monthData?.total_expenses ?? 0,
                         activeHousehold?.currency ?? "USD",
-                        { decimals: false },
+                        {
+                          decimals: false,
+                        },
                       )}
                     </Text>
 
@@ -384,14 +450,31 @@ export default function DashboardScreen() {
                     <Text
                       className={
                         isEmpty
-                          ? "text-gray-300 dark:text-gray-600 text-xs"
-                          : "text-primary-600 text-xs"
+                          ? "text-gray-300 dark:text-gray-600 text-[10px]"
+                          : "text-primary-600 text-[10px]"
                       }
-                      style={{ width: 68, textAlign: "right" }}
+                      style={{ width: 60, textAlign: "right" }}
                       numberOfLines={1}
                     >
                       {formatCurrency(
                         monthPortfolio,
+                        activeHousehold?.currency ?? "USD",
+                        { decimals: false },
+                      )}
+                    </Text>
+
+                    {/* Liabilities */}
+                    <Text
+                      className={
+                        isEmpty
+                          ? "text-gray-300 dark:text-gray-600 text-[10px]"
+                          : "text-danger-600 text-[10px]"
+                      }
+                      style={{ width: 60, textAlign: "right" }}
+                      numberOfLines={1}
+                    >
+                      {formatCurrency(
+                        monthDebt,
                         activeHousehold?.currency ?? "USD",
                         { decimals: false },
                       )}

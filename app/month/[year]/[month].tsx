@@ -169,21 +169,7 @@ export default function MonthDetailScreen() {
       >
         <View style={{ maxWidth: 720, width: "100%" }} className="px-4 pt-2">
           {/* ── Summary 2 × 2 grid ─────────────────────────────────────── */}
-          <View className="flex-row gap-3 mb-4">
-            <SummaryCard
-              label="Net Worth"
-              value={data?.net_worth ?? 0}
-              valueColor="text-primary-600"
-              currency={currency}
-            />
-            <SummaryCard
-              label="Portfolio"
-              value={data?.portfolio_value ?? 0}
-              valueColor="text-primary-600"
-              currency={currency}
-            />
-          </View>
-          <View className="flex-row gap-3 mb-4">
+          <View className="flex-row gap-3 mb-3">
             <SummaryCard
               label="Income"
               value={data?.total_income ?? 0}
@@ -193,9 +179,37 @@ export default function MonthDetailScreen() {
             <SummaryCard
               label="Expenses"
               value={data?.total_expenses ?? 0}
+              valueColor="text-warning-600"
+              currency={currency}
+            />
+          </View>
+          <View className="flex-row gap-3 mb-6">
+            <SummaryCard
+              label="Portfolio"
+              value={data?.portfolio_value ?? 0}
+              valueColor="text-primary-600"
+              currency={currency}
+            />
+            <SummaryCard
+              label="Liabilities"
+              value={data?.total_debt ?? 0}
               valueColor="text-danger-600"
               currency={currency}
             />
+          </View>
+
+          {/* ── Net Worth row (Large) ─────────────────────────────────── */}
+          <View className="bg-primary-600 rounded-2xl p-5 mb-6 shadow-sm">
+            <Text className="text-primary-100 text-xs font-medium mb-1">
+              Net Worth
+            </Text>
+            <Text className="text-white text-3xl font-bold">
+              {new Intl.NumberFormat("en-US", {
+                style: "currency",
+                currency: currency,
+                maximumFractionDigits: 0,
+              }).format(data?.net_worth ?? 0)}
+            </Text>
           </View>
 
           {/* ── Income ─────────────────────────────────────────────────── */}
@@ -222,8 +236,8 @@ export default function MonthDetailScreen() {
             items={expenses}
             totalLabel="Total"
             totalValue={data?.total_expenses ?? 0}
-            totalColor="text-danger-600"
-            itemColor="text-danger-600"
+            totalColor="text-warning-600"
+            itemColor="text-warning-600"
             currency={currency}
             emptyMessage="No expenses recorded"
             showBreakdown
@@ -255,7 +269,7 @@ export default function MonthDetailScreen() {
           <SimpleSection
             title="Liabilities"
             items={liabilities}
-            totalLabel="Total debt"
+            totalLabel="Total liabilities"
             totalValue={data?.total_debt ?? 0}
             totalColor="text-danger-600"
             itemColor="text-danger-600"

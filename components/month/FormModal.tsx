@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -105,6 +105,7 @@ export default function FormModal({
 }: FormModalProps) {
   const [values, setValues] = useState<Record<string, string>>({});
   const [errors, setErrors] = useState<Set<string>>(new Set());
+  const inputRefs = useRef<Record<string, TextInput | null>>({});
 
   useEffect(() => {
     if (visible) {
@@ -199,6 +200,9 @@ export default function FormModal({
                   />
                 ) : (
                   <TextInput
+                    ref={(ref) => {
+                      inputRefs.current[field.key] = ref;
+                    }}
                     className={`border rounded-xl px-4 py-3 mb-3 text-gray-900 dark:text-white dark:bg-gray-700 ${
                       errors.has(field.key)
                         ? "border-red-500"
@@ -218,6 +222,24 @@ export default function FormModal({
                         });
                       }
                     }}
+                    returnKeyType={
+                      fields.indexOf(field) === fields.length - 1
+                        ? "done"
+                        : "next"
+                    }
+                    blurOnSubmit={fields.indexOf(field) === fields.length - 1}
+                    onSubmitEditing={() => {
+                      const idx = fields.indexOf(field);
+                      if (idx === fields.length - 1) {
+                        handleSave();
+                      } else {
+                        // Focus next text field
+                        const nextField = fields[idx + 1];
+                        if (nextField && nextField.type !== "ticker-search") {
+                          inputRefs.current[nextField.key]?.focus();
+                        }
+                      }
+                    }}
                   />
                 )}
               </View>
@@ -232,9 +254,7 @@ export default function FormModal({
               {isLoading ? (
                 <ActivityIndicator color="white" />
               ) : (
-                <Text className="text-white font-semibold text-base">
-                  Save
-                </Text>
+                <Text className="text-white font-semibold text-base">Save</Text>
               )}
             </TouchableOpacity>
 
