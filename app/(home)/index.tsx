@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -25,6 +25,8 @@ import { formatCurrency } from "../../lib/format";
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 const CURRENT_YEAR = new Date().getFullYear();
+const DEFAULT_HOUSEHOLD_NAME = "My Household";
+const DEFAULT_HOUSEHOLD_CURRENCY = "USD";
 
 // ─── Screen ───────────────────────────────────────────────────────────────────
 
@@ -38,8 +40,16 @@ export default function HomeScreen() {
   const [showCreateForm, setShowCreateForm] = useState(false);
   const [menuVisible, setMenuVisible] = useState(false);
 
+  // Guards the one-time automatic household creation for brand-new users
+  const autoCreateTriggered = useRef(false);
+
   // ── Data ──────────────────────────────────────────────────────────────────
-  const { data: households, isLoading: householdsLoading } = useHouseholds();
+  const {
+    data: households,
+    isLoading: householdsLoading,
+    error: householdsError,
+    refetch: refetchHouseholds,
+  } = useHouseholds();
   const { activeHousehold, _hasHydrated, setActiveHousehold } =
     useHouseholdStore();
   const createHousehold = useCreateHousehold();
@@ -56,6 +66,24 @@ export default function HomeScreen() {
     }
   }, [_hasHydrated, activeHousehold, router]);
 
+  // Brand-new user (no households): silently create a default one for them
+  // instead of showing a dedicated onboarding screen.
+  useEffect(() => {
+    if (
+      !householdsLoading &&
+      !householdsError &&
+      households &&
+      households.length === 0 &&
+      !autoCreateTriggered.current
+    ) {
+      autoCreateTriggered.current = true;
+      createHousehold.mutate({
+        name: DEFAULT_HOUSEHOLD_NAME,
+        currency: DEFAULT_HOUSEHOLD_CURRENCY,
+      });
+    }
+  }, [householdsLoading, householdsError, households, createHousehold]);
+
   // Reset form whenever it is hidden
   useEffect(() => {
     if (!showCreateForm) {
@@ -66,6 +94,10 @@ export default function HomeScreen() {
   }, [showCreateForm]);
 
   // ── Handlers ──────────────────────────────────────────────────────────────
+  function handleRetry() {
+    refetchHouseholds();
+  }
+
   function handleCreate() {
     const name = householdName.trim();
     if (!name) {
@@ -90,7 +122,11 @@ export default function HomeScreen() {
   }
 
   // ── Loading ────────────────────────────────────────────────────────────────
-  if (householdsLoading) {
+  // Also covers the brief moment while we auto-create the first household.
+  const isAutoCreating =
+    (households && households.length === 0) || createHousehold.isPending;
+
+  if (householdsLoading || (isAutoCreating && !householdsError)) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950 items-center justify-center">
         <ActivityIndicator size="large" color="#2563eb" />
@@ -98,48 +134,23 @@ export default function HomeScreen() {
     );
   }
 
-  // ── Onboarding (no households yet) ────────────────────────────────────────
-  if (!households || households.length === 0) {
+  // ── Error (e.g. backend is down) ──────────────────────────────────────────
+  if (householdsError) {
     return (
       <SafeAreaView className="flex-1 bg-gray-50 dark:bg-gray-950 items-center justify-center px-8">
-        <Text className="text-6xl mb-4">🏠</Text>
+        <Text className="text-6xl mb-4">🔌</Text>
         <Text className="text-2xl font-bold text-gray-900 dark:text-white mb-2 text-center">
-          Welcome to Kevin
+          Connection Error
         </Text>
         <Text className="text-gray-500 dark:text-gray-400 text-base text-center mb-8">
-          Create a household to get started
+          Unable to reach the server. Please check that the backend is up and
+          running, then try again.
         </Text>
-
-        <TextInput
-          className={`w-full bg-white dark:bg-gray-700 border rounded-xl px-4 py-3 text-gray-900 dark:text-white text-base mb-4 ${
-            householdNameError
-              ? "border-red-500"
-              : "border-gray-200 dark:border-gray-600"
-          }`}
-          placeholder="Household name"
-          placeholderTextColor="#9ca3af"
-          value={householdName}
-          onChangeText={(t) => {
-            setHouseholdName(t);
-            if (householdNameError) setHouseholdNameError(false);
-          }}
-          autoCapitalize="words"
-        />
-
-        <CurrencyPicker value={currency} onChange={setCurrency} />
-
         <TouchableOpacity
-          className="w-full bg-primary-600 rounded-xl py-4 items-center"
-          onPress={handleCreate}
-          disabled={createHousehold.isPending}
+          className="bg-primary-600 rounded-xl px-8 py-3 items-center"
+          onPress={handleRetry}
         >
-          {createHousehold.isPending ? (
-            <ActivityIndicator size="small" color="#ffffff" />
-          ) : (
-            <Text className="text-white font-semibold text-base">
-              Create Household
-            </Text>
-          )}
+          <Text className="text-white font-semibold text-base">Retry</Text>
         </TouchableOpacity>
       </SafeAreaView>
     );
@@ -277,7 +288,7 @@ export default function HomeScreen() {
           </TouchableOpacity>
 
           {/* ── Household cards ─────────────────────────────────────────────── */}
-          {households.map((household) => (
+          {households?.map((household) => (
             <HouseholdCard
               key={household.id}
               household={household}
