@@ -38,10 +38,8 @@ interface SimpleFields {
 
 export interface AssetFields {
   title: string;
-  ticker?: string | null;
+  price: number;
   amount?: number | null;
-  bought_price?: number | null;
-  current_price?: number | null;
 }
 
 // ─── Income ───────────────────────────────────────────────────────────────────

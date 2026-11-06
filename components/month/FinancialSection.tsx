@@ -118,14 +118,18 @@ export function AssetSection({
         <EmptyNote message={emptyMessage} />
       ) : (
         items.map((item, index) => {
-          const value =
-            (item.amount ?? 1) *
-            (item.current_price ?? item.bought_price ?? 0);
+          const quantity =
+            item.amount == null || item.amount === 0 ? 1 : item.amount;
+          const value = quantity * item.price;
           return (
             <ActionItemRow
               key={item.id}
               left={item.title}
-              subtitle={item.ticker ?? undefined}
+              subtitle={
+                item.amount != null && item.amount !== 0
+                  ? `Amount: ${item.amount}`
+                  : undefined
+              }
               right={formatCurrency(value, currency)}
               rightColor={itemColor}
               isLast={index === items.length - 1}

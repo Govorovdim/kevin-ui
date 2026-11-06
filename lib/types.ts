@@ -35,10 +35,8 @@ export interface Expense {
 export interface Asset {
   id: number;
   title: string;
-  ticker: string | null;
+  price: number;
   amount: number | null;
-  bought_price: number | null;
-  current_price: number | null;
   created_at: string;
   updated_at: string;
 }

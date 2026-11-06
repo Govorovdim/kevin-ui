@@ -8,7 +8,6 @@ import {
   Modal,
   TextInput,
 } from "react-native";
-import { TickerSearchInput } from "../ui/TickerSearchInput";
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -18,10 +17,6 @@ export interface FieldConfig {
   placeholder: string;
   keyboardType?: "default" | "decimal-pad";
   required?: boolean;
-  /** When set to "ticker-search", renders a TickerSearchInput dropdown. */
-  type?: "text" | "ticker-search";
-  /** When type is "ticker-search", the key of the field to auto-fill with the fetched price. */
-  fillOnSelect?: string;
 }
 
 export interface FormModalProps {
@@ -70,24 +65,18 @@ export const LIABILITY_FIELDS: FieldConfig[] = [
 ];
 
 export const ASSET_FIELDS: FieldConfig[] = [
-  { key: "title", label: "Title", placeholder: "Apple Stock", required: true },
+  { key: "title", label: "Name", placeholder: "Apple Stock", required: true },
   {
-    key: "ticker",
-    label: "Ticker (optional)",
-    placeholder: "AAPL",
-    type: "ticker-search" as const,
-    fillOnSelect: "bought_price",
+    key: "price",
+    label: "Price",
+    placeholder: "0.00",
+    keyboardType: "decimal-pad",
+    required: true,
   },
   {
     key: "amount",
-    label: "Quantity (optional)",
-    placeholder: "0",
-    keyboardType: "decimal-pad",
-  },
-  {
-    key: "bought_price",
-    label: "Price (optional)",
-    placeholder: "0.00",
+    label: "Amount (optional)",
+    placeholder: "1",
     keyboardType: "decimal-pad",
   },
 ];
@@ -133,25 +122,30 @@ export default function FormModal({
     <Modal
       visible={visible}
       transparent
-      animationType="slide"
+      animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1" style={{ backgroundColor: "rgba(0,0,0,0.5)" }}>
+      <View
+        className="flex-1 justify-center items-center"
+        style={{
+          backgroundColor: "rgba(0,0,0,0.85)",
+          paddingHorizontal: 16,
+        }}
+      >
         {/* Backdrop — tap to close */}
         <TouchableOpacity
-          className="flex-1"
+          style={{ position: "absolute", top: 0, right: 0, bottom: 0, left: 0 }}
           onPress={onClose}
           activeOpacity={1}
         />
 
-        {/* Bottom-sheet card */}
+        {/* Centered dialog card */}
         <View
-          className="bg-white dark:bg-gray-800 rounded-t-3xl"
+          className="bg-white dark:bg-gray-800 rounded-3xl"
           style={{
             maxHeight: "88%",
             maxWidth: 540,
             width: "100%",
-            alignSelf: "center",
           }}
         >
           <ScrollView
@@ -184,64 +178,46 @@ export default function FormModal({
                 <Text className="text-gray-700 dark:text-gray-300 text-sm font-medium mb-1">
                   {field.label}
                 </Text>
-                {field.type === "ticker-search" ? (
-                  <TickerSearchInput
-                    value={values[field.key] ?? ""}
-                    placeholder={field.placeholder}
-                    onChange={(symbol, price) => {
-                      setValues((v) => {
-                        const next = { ...v, [field.key]: symbol };
-                        if (field.fillOnSelect && price != null) {
-                          next[field.fillOnSelect] = String(price);
-                        }
+                <TextInput
+                  ref={(ref) => {
+                    inputRefs.current[field.key] = ref;
+                  }}
+                  className={`border rounded-xl px-4 py-3 mb-3 text-gray-900 dark:text-white dark:bg-gray-700 ${
+                    errors.has(field.key)
+                      ? "border-red-500"
+                      : "border-gray-200 dark:border-gray-600"
+                  }`}
+                  placeholder={field.placeholder}
+                  placeholderTextColor="#9ca3af"
+                  keyboardType={field.keyboardType ?? "default"}
+                  value={values[field.key] ?? ""}
+                  onChangeText={(text) => {
+                    setValues((v) => ({ ...v, [field.key]: text }));
+                    if (errors.has(field.key)) {
+                      setErrors((e) => {
+                        const next = new Set(e);
+                        next.delete(field.key);
                         return next;
                       });
-                    }}
-                  />
-                ) : (
-                  <TextInput
-                    ref={(ref) => {
-                      inputRefs.current[field.key] = ref;
-                    }}
-                    className={`border rounded-xl px-4 py-3 mb-3 text-gray-900 dark:text-white dark:bg-gray-700 ${
-                      errors.has(field.key)
-                        ? "border-red-500"
-                        : "border-gray-200 dark:border-gray-600"
-                    }`}
-                    placeholder={field.placeholder}
-                    placeholderTextColor="#9ca3af"
-                    keyboardType={field.keyboardType ?? "default"}
-                    value={values[field.key] ?? ""}
-                    onChangeText={(text) => {
-                      setValues((v) => ({ ...v, [field.key]: text }));
-                      if (errors.has(field.key)) {
-                        setErrors((e) => {
-                          const next = new Set(e);
-                          next.delete(field.key);
-                          return next;
-                        });
-                      }
-                    }}
-                    returnKeyType={
-                      fields.indexOf(field) === fields.length - 1
-                        ? "done"
-                        : "next"
                     }
-                    blurOnSubmit={fields.indexOf(field) === fields.length - 1}
-                    onSubmitEditing={() => {
-                      const idx = fields.indexOf(field);
-                      if (idx === fields.length - 1) {
-                        handleSave();
-                      } else {
-                        // Focus next text field
-                        const nextField = fields[idx + 1];
-                        if (nextField && nextField.type !== "ticker-search") {
-                          inputRefs.current[nextField.key]?.focus();
-                        }
-                      }
-                    }}
-                  />
-                )}
+                  }}
+                  returnKeyType={
+                    fields.indexOf(field) === fields.length - 1
+                      ? "done"
+                      : "next"
+                  }
+                  blurOnSubmit={fields.indexOf(field) === fields.length - 1}
+                  onSubmitEditing={() => {
+                    const idx = fields.indexOf(field);
+                    if (idx === fields.length - 1) {
+                      handleSave();
+                    } else {
+                      // Focus next text field
+                      const nextField = fields[idx + 1];
+                      inputRefs.current[nextField.key]?.focus();
+                    }
+                  }}
+                />
               </View>
             ))}
 

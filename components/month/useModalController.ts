@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useRef, useState } from "react";
 import type { Income, Expense, Asset, Liability } from "../../lib/types";
 import type { FieldConfig } from "./FormModal";
 import {
@@ -44,11 +44,20 @@ interface ModalConfig {
 
 export function useModalController(crud: CrudHooks) {
   const [modalState, setModalState] = useState<ModalMode>(null);
+  const lastConfig = useRef<ModalConfig | null>(null);
   const closeModal = () => setModalState(null);
 
   function getModalConfig(): ModalConfig | null {
-    if (!modalState) return null;
+    if (!modalState) return lastConfig.current;
 
+    const config = buildModalConfig(modalState);
+    lastConfig.current = config;
+    return config;
+  }
+
+  function buildModalConfig(
+    modalState: Exclude<ModalMode, null>,
+  ): ModalConfig {
     switch (modalState.type) {
       case "income": {
         const ms = modalState;
@@ -123,24 +132,15 @@ export function useModalController(crud: CrudHooks) {
             ms.mode === "edit"
               ? {
                   title: ms.item.title,
-                  ticker: ms.item.ticker ?? "",
-                  amount:
-                    ms.item.amount != null ? String(ms.item.amount) : "",
-                  bought_price:
-                    ms.item.bought_price != null
-                      ? String(ms.item.bought_price)
-                      : "",
+                  price: String(ms.item.price),
+                  amount: ms.item.amount != null ? String(ms.item.amount) : "",
                 }
               : undefined,
           onSubmit: (values) => {
             const body = {
               title: values.title,
-              ticker: values.ticker || null,
+              price: parseFloat(values.price || "0"),
               amount: values.amount ? parseFloat(values.amount) : null,
-              bought_price: values.bought_price
-                ? parseFloat(values.bought_price)
-                : null,
-              current_price: null as number | null,
             };
             if (ms.mode === "add") {
               crud.createAsset.mutate(body, { onSuccess: closeModal });
@@ -184,6 +184,7 @@ export function useModalController(crud: CrudHooks) {
         };
       }
     }
+    throw new Error("Unhandled modal type");
   }
 
   return {
