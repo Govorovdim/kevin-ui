@@ -1,5 +1,15 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { api } from "../api";
+import { useHouseholdStore } from "../../store/household.store";
+
+const HOUSEHOLD_ACTIONS = new Set([
+  "create_household",
+  "rename_household",
+  "generate_household_invite",
+  "join_household",
+  "leave_household",
+  "delete_household",
+]);
 
 export interface ChatMessage {
   role: "user" | "assistant";
@@ -15,6 +25,7 @@ export interface ActionResult {
 export interface ChatResponse {
   message: string;
   actions: ActionResult[];
+  title?: string | null;
 }
 
 interface HouseholdSummary {
@@ -99,8 +110,25 @@ export function useChatMutation() {
       });
       return res.data;
     },
-    onSuccess: () => {
+    onSuccess: (data, variables) => {
       qc.invalidateQueries({ queryKey: ["overview"] });
+
+      const succeeded = data.actions.filter((a) => a.success);
+      if (succeeded.some((a) => HOUSEHOLD_ACTIONS.has(a.action))) {
+        qc.invalidateQueries({ queryKey: ["households"] });
+      }
+
+      // If the active household was deleted or left, clear it so the UI
+      // navigates back to the household picker.
+      const activeHouseholdRemoved =
+        variables.householdId != null &&
+        succeeded.some(
+          (a) =>
+            a.action === "delete_household" || a.action === "leave_household",
+        );
+      if (activeHouseholdRemoved) {
+        useHouseholdStore.getState().clearActiveHousehold();
+      }
     },
   });
 }

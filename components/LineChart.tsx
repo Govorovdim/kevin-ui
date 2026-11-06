@@ -8,6 +8,7 @@ import Svg, {
   Stop,
 } from "react-native-svg";
 import { View, Text } from "react-native";
+import type { PointerEvent as RNPointerEvent } from "react-native";
 import { useState } from "react";
 import { formatCurrency } from "../lib/format";
 
@@ -24,6 +25,7 @@ export interface Props {
   height?: number; // default 180
   showZeroLine?: boolean; // draw a dashed zero-line if data crosses zero
   currency?: string; // ISO 4217 code, default "USD"
+  year?: number; // shown in the hover tooltip
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -69,8 +71,10 @@ export default function LineChart({
   height = 180,
   showZeroLine = false,
   currency = "USD",
+  year,
 }: Props) {
   const [width, setWidth] = useState(300);
+  const [activeIndex, setActiveIndex] = useState<number | null>(null);
 
   // Derived chart-area dimensions
   const chartWidth = width - PADDING.left - PADDING.right;
@@ -96,6 +100,34 @@ export default function LineChart({
 
   // Only draw the zero-line when at least one value is negative
   const hasNegative = allValues.some((v) => v < 0);
+
+  // ── Hover interaction ──────────────────────────────────────────────────────
+
+  function handlePointerMove(event: RNPointerEvent) {
+    if (chartWidth <= 0) return;
+
+    const x = event.nativeEvent.offsetX;
+    const relative = x - PADDING.left;
+    if (relative < 0 || relative > chartWidth) {
+      setActiveIndex(null);
+      return;
+    }
+
+    const index = Math.round((relative / chartWidth) * (MONTHS.length - 1));
+    setActiveIndex(Math.max(0, Math.min(MONTHS.length - 1, index)));
+  }
+
+  const tooltipWidth = Math.min(160, Math.max(120, width - 8));
+  const tooltipLeft =
+    activeIndex === null
+      ? 0
+      : Math.max(
+          0,
+          Math.min(
+            toX(activeIndex) - tooltipWidth / 2,
+            width - tooltipWidth,
+          ),
+        );
 
   // ── Path builders ──────────────────────────────────────────────────────────
 
@@ -123,6 +155,7 @@ export default function LineChart({
   return (
     <View
       className="w-full"
+      style={{ position: "relative" }}
       onLayout={(e) => setWidth(e.nativeEvent.layout.width)}
     >
       <Svg width={width} height={height}>
@@ -225,7 +258,114 @@ export default function LineChart({
             />
           )),
         )}
+
+        {/* ── Hover highlight: vertical guide + enlarged dots ── */}
+        {activeIndex !== null && (
+          <>
+            <Line
+              x1={toX(activeIndex)}
+              y1={PADDING.top}
+              x2={toX(activeIndex)}
+              y2={PADDING.top + chartHeight}
+              stroke="#9ca3af"
+              strokeWidth={1}
+              strokeDasharray="3 3"
+            />
+            {datasets.map((dataset, di) => (
+              <Circle
+                key={`active-${di}`}
+                cx={toX(activeIndex)}
+                cy={toY(dataset.data[activeIndex])}
+                r={5}
+                fill={dataset.color}
+                stroke="#fff"
+                strokeWidth={1.5}
+              />
+            ))}
+          </>
+        )}
       </Svg>
+
+      {/* ── Hover target + tooltip ── */}
+      <View
+        style={{
+          position: "absolute",
+          top: 0,
+          left: 0,
+          width,
+          height,
+          cursor: "pointer",
+        }}
+        onPointerMove={handlePointerMove}
+        onPointerDown={handlePointerMove}
+        onPointerLeave={() => setActiveIndex(null)}
+      >
+        {activeIndex !== null && (
+          <View
+            pointerEvents="none"
+            style={{
+              position: "absolute",
+              top: 4,
+              left: tooltipLeft,
+              width: tooltipWidth,
+              backgroundColor: "rgba(17, 24, 39, 0.94)",
+              borderRadius: 8,
+              paddingHorizontal: 8,
+              paddingVertical: 6,
+            }}
+          >
+            <Text
+              style={{
+                color: "#d1d5db",
+                fontSize: 10,
+                fontWeight: "600",
+                marginBottom: 2,
+              }}
+            >
+              {MONTHS[activeIndex]}
+              {year ? ` ${year}` : ""}
+            </Text>
+            {datasets.map((dataset, di) => (
+              <View
+                key={`tip-${di}`}
+                style={{
+                  flexDirection: "row",
+                  alignItems: "center",
+                  marginTop: 2,
+                }}
+              >
+                <View
+                  style={{
+                    width: 6,
+                    height: 6,
+                    borderRadius: 3,
+                    backgroundColor: dataset.color,
+                    marginRight: 5,
+                  }}
+                />
+                <Text
+                  style={{ color: "#d1d5db", fontSize: 10, flex: 1 }}
+                  numberOfLines={1}
+                >
+                  {dataset.label}
+                </Text>
+                <Text
+                  style={{
+                    color: "#fff",
+                    fontSize: 10,
+                    fontWeight: "600",
+                    marginLeft: 6,
+                  }}
+                >
+                  {formatCurrency(dataset.data[activeIndex], currency, {
+                    decimals: false,
+                  })}
+                </Text>
+              </View>
+            ))}
+          </View>
+        )}
+      </View>
 
       {/* ── Legend ── */}
       <View

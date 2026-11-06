@@ -308,6 +308,7 @@ export default function DashboardScreen() {
               ]}
               height={160}
               currency={activeHousehold?.currency ?? "USD"}
+              year={year}
             />
           </View>
 
@@ -324,6 +325,7 @@ export default function DashboardScreen() {
               height={140}
               showZeroLine
               currency={activeHousehold?.currency ?? "USD"}
+              year={year}
             />
           </View>
 

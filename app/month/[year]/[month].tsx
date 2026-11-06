@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import {
   View,
   Text,
@@ -13,6 +14,7 @@ import { useRouter, useLocalSearchParams } from "expo-router";
 
 import { useMonthOverview } from "../../../lib/hooks/useOverview";
 import { useHouseholdStore } from "../../../store/household.store";
+import AiChat from "../../../components/AiChat";
 import {
   useCreateIncome,
   useUpdateIncome,
@@ -64,9 +66,17 @@ export default function MonthDetailScreen() {
   const year = parseInt(yearStr, 10);
   const month = parseInt(monthStr, 10);
 
-  const { activeHousehold } = useHouseholdStore();
+  const { activeHousehold, _hasHydrated } = useHouseholdStore();
   const hid = activeHousehold?.id ?? 0;
   const currency = activeHousehold?.currency ?? "USD";
+
+  // If the active household disappears (deleted/left via chat or another tab),
+  // return to the household picker instead of showing an empty month.
+  useEffect(() => {
+    if (_hasHydrated && !activeHousehold) {
+      router.replace("/(home)");
+    }
+  }, [_hasHydrated, activeHousehold, router]);
 
   // ── CRUD hooks ─────────────────────────────────────────────────────────────
   const createIncome = useCreateIncome(hid, year, month);
@@ -168,6 +178,14 @@ export default function MonthDetailScreen() {
         showsVerticalScrollIndicator={false}
       >
         <View style={{ maxWidth: 720, width: "100%" }} className="px-4 pt-2">
+          {/* ── AI Chat ───────────────────────────────────────────────── */}
+          <AiChat
+            year={year}
+            month={month}
+            householdId={activeHousehold?.id}
+            householdName={activeHousehold?.name}
+          />
+
           {/* ── Summary 2 × 2 grid ─────────────────────────────────────── */}
           <View className="flex-row gap-3 mb-3">
             <SummaryCard

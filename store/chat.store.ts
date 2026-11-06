@@ -22,6 +22,7 @@ interface ChatState {
   createSession: (householdId?: number) => string;
   setActiveSession: (id: string | null) => void;
   addMessage: (sessionId: string, msg: ChatMessage) => void;
+  setSessionTitle: (sessionId: string, title: string) => void;
   deleteSession: (sessionId: string) => void;
   clearAllSessions: () => void;
   getSessionsForHousehold: (householdId?: number) => ChatSession[];
@@ -76,6 +77,16 @@ export const useChatStore = create<ChatState>()(
         }));
       },
 
+      setSessionTitle: (sessionId, title) => {
+        const trimmed = title.trim();
+        if (!trimmed) return;
+        set((state) => ({
+          sessions: state.sessions.map((s) =>
+            s.id === sessionId ? { ...s, title: trimmed } : s,
+          ),
+        }));
+      },
+
       deleteSession: (sessionId) => {
         set((state) => {
           const sessions = state.sessions.filter((s) => s.id !== sessionId);
@@ -92,18 +103,21 @@ export const useChatStore = create<ChatState>()(
        * Returns sessions filtered by household context:
        * - If householdId is provided: returns sessions belonging to that household
        * - If householdId is undefined/null: returns sessions that have no household (general/all)
-       * Only returns sessions that have at least one message.
+       * Only returns sessions that have at least one message, ordered by
+       * most recently used (last message) first.
        */
       getSessionsForHousehold: (householdId?: number) => {
         const { sessions } = get();
-        return sessions.filter((s) => {
-          if (s.messages.length === 0) return false;
-          if (householdId != null) {
-            return s.householdId === householdId;
-          }
-          // No household specified — show sessions without a specific household
-          return s.householdId == null;
-        });
+        return sessions
+          .filter((s) => {
+            if (s.messages.length === 0) return false;
+            if (householdId != null) {
+              return s.householdId === householdId;
+            }
+            // No household specified — show sessions without a specific household
+            return s.householdId == null;
+          })
+          .sort((a, b) => b.updatedAt - a.updatedAt);
       },
     }),
     {

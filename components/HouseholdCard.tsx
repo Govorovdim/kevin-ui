@@ -66,18 +66,13 @@ function CardContent({
 
   return (
     <>
-      {/* Top row: name + chevron */}
-      <View className="flex-row items-center justify-between mb-2">
-        <Text
-          className="text-xl font-bold text-gray-900 dark:text-white flex-1 mr-2"
-          numberOfLines={1}
-        >
-          {household.name}
-        </Text>
-        <Text className="text-gray-400 dark:text-gray-500 text-2xl leading-none">
-          ›
-        </Text>
-      </View>
+      {/* Top row: name */}
+      <Text
+        className="text-xl font-bold text-gray-900 dark:text-white mb-2"
+        numberOfLines={1}
+      >
+        {household.name}
+      </Text>
 
       {/* Badge row: member count + currency */}
       <View className="flex-row items-center mb-4" style={{ gap: 8 }}>

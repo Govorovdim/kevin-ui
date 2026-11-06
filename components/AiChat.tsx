@@ -62,6 +62,7 @@ export default function AiChat({
     createSession,
     setActiveSession,
     addMessage,
+    setSessionTitle,
     deleteSession,
     getSessionsForHousehold,
   } = useChatStore();
@@ -120,6 +121,9 @@ export default function AiChat({
             content: data.message,
           };
           addMessage(sessionId, assistantMsg);
+          if (data.title) {
+            setSessionTitle(sessionId, data.title);
+          }
           setTimeout(
             () => scrollRef.current?.scrollToEnd({ animated: true }),
             100,
@@ -243,7 +247,7 @@ export default function AiChat({
         {messages.length === 0 && (
           <Text className="text-gray-400 dark:text-gray-500 text-xs text-center py-4">
             Ask me to add expenses, income, assets, or liabilities.{"\n"}
-            e.g. "Add $50 groceries expense for this month"
+            {'e.g. "Add $50 groceries expense for this month"'}
           </Text>
         )}
 
